@@ -93,19 +93,30 @@ body{
 #edit-field-client-target-id{
 	display: flex;
 }
+#block-tara-content{
+	margin: 0px 6%;
+}
+.field--name-field-product-image{
+	clear: both;
+}
+
+#edit-title-0-value{display: none;}
 
 
-
-
-
-
-
-
-
-
-
-
-
+#block-tara-content .field ,#block-tara-content .node-taxonomy-container{
+	float: left;
+  width: 30%;
+  margin-right: 3%;
+}
+.primary-tab{
+	margin: 4% 3% 2% !important;
+}
+.node-add-product-form .form-item{
+	float: left !important;
+	width: 30% !important;
+  margin-right: 3%;
+}
+#edit-title-0-value{width: 1%;}
 
 
 

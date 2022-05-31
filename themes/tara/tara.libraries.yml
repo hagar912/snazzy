@@ -4,6 +4,9 @@ global-styling:
   css:
     component:
       css/font-awesome.css: {}
+      css/custom_theme/mystyle.css: {}
+    layout:
+      css/custom_theme/mystyle.css: {}
     theme:
       css/style.css: {}
       css/custom_theme/mystyle.css: {}

@@ -10,10 +10,14 @@ function cust_module_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $fo
 
 }
 
+/*function cust_module_preprocess_node(&$vars) {
+  
+}
+
 /*
  * alter form add product*/
 function handle_add_product_form_alter(&$form){  
-  $form['field_product_price']['widget'][0]['value']['#attributes']['placeholder'] = 'price isnot available to write';
+  $form['field_product_price']['widget'][0]['value']['#attributes']['placeholder'] = 'Enter the price';
  // $form['field_product_price']['widget'][0]['value']['#attributes']['readonly'] = 'readonly';
   $form['actions']['submit']['#value']='Save My Produnct';
     $form['source_code'] = array(

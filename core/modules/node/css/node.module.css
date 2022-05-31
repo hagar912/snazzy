@@ -21,7 +21,7 @@
   .layout-region-node-footer {
     float: left; /* LTR */
     box-sizing: border-box;
-    width: 65%;
+    width: 100%;
     padding-right: 2em; /* LTR */
   }
 
@@ -34,8 +34,8 @@
 
   .layout-region-node-secondary {
     float: right; /* LTR */
-    width: 35%;
     display: none;
+    width: 35%;
   }
 
   [dir="rtl"] .layout-region-node-secondary {

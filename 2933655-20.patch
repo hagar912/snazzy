@@ -1,0 +1,574 @@
+diff --git a/composer.json b/composer.json
+index 235c45bc..b9920fdb 100644
+--- a/composer.json
++++ b/composer.json
+@@ -18,9 +18,6 @@
+     "docs": "https://www.drupal.org/docs/8/modules/webform",
+     "forum": "https://drupal.stackexchange.com/questions/tagged/webform"
+   },
+-  "require": {
+-    "drupal/contribute": "^1.0"
+-  },
+   "extra": {
+     "drush": {
+       "services": {
+diff --git a/config/install/webform.settings.yml b/config/install/webform.settings.yml
+index 5706f727..4131cb04 100644
+--- a/config/install/webform.settings.yml
++++ b/config/install/webform.settings.yml
+@@ -118,7 +118,24 @@ element:
+   default_empty_option_optional: ''
+   default_icheck: ''
+   default_google_maps_api_key: ''
++  default_pretty_checkbox: ''
++  default_pretty_radio: ''
++  default_pretty_states: ''
+   excluded_elements: {  }
++  pretty_checkbox:
++    p-square: 'Square'
++    p-square p-fill: 'Square/Fill'
++    p-square p-thick: 'Square/Thick'
++  pretty_radio:
++    p-round: 'Round'
++    p-round p-thick: 'Round/Thick'
++    p-round p-fill: 'Round/Fill'
++  pretty_states:
++    p-primary: 'Primary'
++    p-success: 'Success'
++    p-info: 'Info'
++    p-warning: 'Warning'
++    p-danger: 'Danger'
+ html_editor:
+   disabled: false
+   format: ''
+@@ -146,7 +163,7 @@ mail:
+   default_body_text: |
+     Submitted on [webform_submission:created]
+     Submitted by: [webform_submission:user]
+-    
++
+     Submitted values are:
+     [webform_submission:values]
+   default_body_html: |
+diff --git a/includes/webform.theme.inc b/includes/webform.theme.inc
+index 0ce667b2..8e6d4c79 100644
+--- a/includes/webform.theme.inc
++++ b/includes/webform.theme.inc
+@@ -7,6 +7,7 @@
+ 
+ use Drupal\file\Entity\File;
+ use Drupal\Component\Utility\Html;
++use Drupal\Core\Render\Markup;
+ use Drupal\Core\Template\Attribute;
+ 
+ /******************************************************************************/
+@@ -385,6 +386,9 @@ function webform_preprocess_form_element(&$variables) {
+   // Note: #_title_display is used to track inline titles.
+   // @see \Drupal\webform\Plugin\WebformElementBase::prepare
+   $variables['label'] += array_intersect_key($element, array_flip(['#help', '#_title_display']));
++
++  // Restructure elements for pretty-checkbox support.
++  _webform_preprocess_form_element_pretty_checkbox($variables);
+ }
+ 
+ /**
+@@ -489,6 +493,45 @@ function _webform_preprocess_form_element_description_more(&$variables) {
+ }
+ 
+ /**
++ * Restructures elements to adhere to pretty-checkbox markup structure.
++ *
++ * @see template_preprocess_form_element().
++ */
++function _webform_preprocess_form_element_pretty_checkbox(&$variables) {
++  $element = &$variables['element'];
++
++  if (!isset($element['#attributes']['drupal-webform-pretty'])) {
++    return;
++  }
++
++  // Get label and checkbox.
++  $label = $variables['label'];
++  $checkbox = $variables['children'];
++  unset($variables['label'], $variables['children']);
++
++  // Build pretty and state classes.
++  $pretty_classes = ['pretty', 'p-default'];
++  $pretty_classes = array_merge($pretty_classes, explode(' ', $element['#attributes']['drupal-webform-pretty']));
++
++  $state_classes = ['state'];
++  if (isset($element['#attributes']['drupal-webform-pretty-state'])) {
++    $state_classes = array_merge($state_classes, explode(' ', $element['#attributes']['drupal-webform-pretty-state']));
++  }
++
++  $variables['children'] = [
++    '#type' => 'container',
++    '#attributes' => ['class' => $pretty_classes],
++    'checkbox' => ['#markup' => $checkbox],
++    'state' => [
++      '#type' => 'container',
++      '#attributes' => ['class' => $state_classes],
++      'label' => $label,
++    ],
++  ];
++}
++
++
++/**
+  * Prepares #more property for details template.
+  *
+  * @see template_preprocess_details()
+diff --git a/modules/webform_example_composite/src/Tests/WebformExampleCompositeTest.php b/modules/webform_example_composite/src/Tests/WebformExampleCompositeTest.php
+index 7ea2b835..6d8557de 100644
+--- a/modules/webform_example_composite/src/Tests/WebformExampleCompositeTest.php
++++ b/modules/webform_example_composite/src/Tests/WebformExampleCompositeTest.php
+@@ -32,13 +32,13 @@ class WebformExampleCompositeTest extends WebformTestBase {
+     // This is a very lazy but easy way to check that the element is rendering
+     // as expected.
+     $this->assertRaw('<label for="edit-webform-example-composite-first-name">First name</label>');
+-    $this->assertRaw('<input data-webform-composite-id="webform-example-composite--14--first_name" data-drupal-selector="edit-webform-example-composite-first-name" type="text" id="edit-webform-example-composite-first-name" name="webform_example_composite[first_name]" value="" size="60" maxlength="255" class="form-text" />');
++    $this->assertRaw('<input data-webform-composite-id="webform-example-composite--16--first_name" data-drupal-selector="edit-webform-example-composite-first-name" type="text" id="edit-webform-example-composite-first-name" name="webform_example_composite[first_name]" value="" size="60" maxlength="255" class="form-text" />');
+     $this->assertRaw('<label for="edit-webform-example-composite-last-name">Last name</label>');
+-    $this->assertRaw('<input data-webform-composite-id="webform-example-composite--14--last_name" data-drupal-selector="edit-webform-example-composite-last-name" type="text" id="edit-webform-example-composite-last-name" name="webform_example_composite[last_name]" value="" size="60" maxlength="255" class="form-text" />');
++    $this->assertRaw('<input data-webform-composite-id="webform-example-composite--16--last_name" data-drupal-selector="edit-webform-example-composite-last-name" type="text" id="edit-webform-example-composite-last-name" name="webform_example_composite[last_name]" value="" size="60" maxlength="255" class="form-text" />');
+     $this->assertRaw('<label for="edit-webform-example-composite-date-of-birth">Date of birth</label>');
+-    $this->assertRaw('<input type="date" data-drupal-selector="edit-webform-example-composite-date-of-birth" data-drupal-date-format="Y-m-d" id="edit-webform-example-composite-date-of-birth" name="webform_example_composite[date_of_birth]" value="" class="form-date" data-drupal-states="{&quot;enabled&quot;:{&quot;[data-webform-composite-id=\u0022webform-example-composite--14--first_name\u0022]&quot;:{&quot;filled&quot;:true},&quot;[data-webform-composite-id=\u0022webform-example-composite--14--last_name\u0022]&quot;:{&quot;filled&quot;:true}}}" />');
++    $this->assertRaw('<input type="date" data-drupal-selector="edit-webform-example-composite-date-of-birth" data-drupal-date-format="Y-m-d" id="edit-webform-example-composite-date-of-birth" name="webform_example_composite[date_of_birth]" value="" class="form-date" data-drupal-states="{&quot;enabled&quot;:{&quot;[data-webform-composite-id=\u0022webform-example-composite--16--first_name\u0022]&quot;:{&quot;filled&quot;:true},&quot;[data-webform-composite-id=\u0022webform-example-composite--16--last_name\u0022]&quot;:{&quot;filled&quot;:true}}}" />');
+     $this->assertRaw('<label for="edit-webform-example-composite-gender">Gender</label>');
+-    $this->assertRaw('<select data-drupal-selector="edit-webform-example-composite-gender" id="edit-webform-example-composite-gender" name="webform_example_composite[gender]" class="form-select" data-drupal-states="{&quot;enabled&quot;:{&quot;[data-webform-composite-id=\u0022webform-example-composite--14--first_name\u0022]&quot;:{&quot;filled&quot;:true},&quot;[data-webform-composite-id=\u0022webform-example-composite--14--last_name\u0022]&quot;:{&quot;filled&quot;:true}}}"><option value="" selected="selected">- None -</option><option value="Male">Male</option><option value="Female">Female</option><option value="Transgender">Transgender</option></select>');
++    $this->assertRaw('<select data-drupal-selector="edit-webform-example-composite-gender" id="edit-webform-example-composite-gender" name="webform_example_composite[gender]" class="form-select" data-drupal-states="{&quot;enabled&quot;:{&quot;[data-webform-composite-id=\u0022webform-example-composite--16--first_name\u0022]&quot;:{&quot;filled&quot;:true},&quot;[data-webform-composite-id=\u0022webform-example-composite--16--last_name\u0022]&quot;:{&quot;filled&quot;:true}}}"><option value="" selected="selected">- None -</option><option value="Male">Male</option><option value="Female">Female</option><option value="Transgender">Transgender</option></select>');
+ 
+     // Check webform element submission.
+     $edit = [
+diff --git a/src/Plugin/WebformElement/Checkbox.php b/src/Plugin/WebformElement/Checkbox.php
+index 1e3c5d67..1b190065 100644
+--- a/src/Plugin/WebformElement/Checkbox.php
++++ b/src/Plugin/WebformElement/Checkbox.php
+@@ -23,6 +23,9 @@ class Checkbox extends BooleanBase {
+       'title_display' => 'after',
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + parent::getDefaultProperties();
+     unset($properties['unique'], $properties['unique_entity'], $properties['unique_user'], $properties['unique_error']);
+     return $properties;
+diff --git a/src/Plugin/WebformElement/Checkboxes.php b/src/Plugin/WebformElement/Checkboxes.php
+index 4d3ce2fd..4d579ed6 100644
+--- a/src/Plugin/WebformElement/Checkboxes.php
++++ b/src/Plugin/WebformElement/Checkboxes.php
+@@ -31,6 +31,9 @@ class Checkboxes extends OptionsBase {
+       'options_description_display' => 'description',
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + parent::getDefaultProperties();
+   }
+ 
+diff --git a/src/Plugin/WebformElement/Radios.php b/src/Plugin/WebformElement/Radios.php
+index c4f52bb8..e60881e0 100644
+--- a/src/Plugin/WebformElement/Radios.php
++++ b/src/Plugin/WebformElement/Radios.php
+@@ -27,6 +27,9 @@ class Radios extends OptionsBase {
+       'options_description_display' => 'description',
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + parent::getDefaultProperties();
+   }
+ 
+diff --git a/src/Plugin/WebformElement/TableSelect.php b/src/Plugin/WebformElement/TableSelect.php
+index fde76504..e01062aa 100644
+--- a/src/Plugin/WebformElement/TableSelect.php
++++ b/src/Plugin/WebformElement/TableSelect.php
+@@ -30,6 +30,9 @@ class TableSelect extends OptionsBase {
+       'js_select' => TRUE,
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + parent::getDefaultProperties();
+   }
+ 
+diff --git a/src/Plugin/WebformElement/WebformLikert.php b/src/Plugin/WebformElement/WebformLikert.php
+index 58086c64..29153c6d 100644
+--- a/src/Plugin/WebformElement/WebformLikert.php
++++ b/src/Plugin/WebformElement/WebformLikert.php
+@@ -61,6 +61,9 @@ class WebformLikert extends WebformElementBase {
+       'wrapper_attributes' => [],
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + $this->getDefaultBaseProperties();
+   }
+ 
+diff --git a/src/Plugin/WebformElement/WebformTableSelectSort.php b/src/Plugin/WebformElement/WebformTableSelectSort.php
+index 81e44a10..d10310a2 100644
+--- a/src/Plugin/WebformElement/WebformTableSelectSort.php
++++ b/src/Plugin/WebformElement/WebformTableSelectSort.php
+@@ -33,6 +33,9 @@ class WebformTableSelectSort extends OptionsBase {
+       'js_select' => TRUE,
+       // iCheck settings.
+       'icheck' => '',
++      // Pretty settings.
++      'pretty' => '',
++      'pretty__state' => '',
+     ] + parent::getDefaultProperties();
+   }
+ 
+diff --git a/src/Plugin/WebformElement/WebformToggle.php b/src/Plugin/WebformElement/WebformToggle.php
+index 88f06fbc..875312e7 100644
+--- a/src/Plugin/WebformElement/WebformToggle.php
++++ b/src/Plugin/WebformElement/WebformToggle.php
+@@ -29,7 +29,7 @@ class WebformToggle extends Checkbox {
+       'off_text' => '',
+     ];
+     $properties['title_display'] = 'after';
+-    unset($properties['icheck'], $properties['required']);
++    unset($properties['icheck'], $properties['pretty'], $properties['pretty__state'], $properties['required']);
+     return $properties;
+   }
+ 
+diff --git a/src/Plugin/WebformElementBase.php b/src/Plugin/WebformElementBase.php
+index 7cac7dc9..db15bcbd 100644
+--- a/src/Plugin/WebformElementBase.php
++++ b/src/Plugin/WebformElementBase.php
+@@ -668,6 +668,35 @@ class WebformElementBase extends PluginBase implements WebformElementInterface {
+       }
+     }
+ 
++    // Add pretty-checkbox support.
++    if ($this->hasProperty('pretty') && $this->librariesManager->isIncluded('pretty-checkbox')) {
++
++      $pretty_attribute = &$element['#attributes']['drupal-webform-pretty'];
++      $pretty_state_attribute = &$element['#attributes']['drupal-webform-pretty-state'];
++
++      if (isset($element['#pretty'])) {
++        $pretty_attribute = $element['#pretty'];
++        if (isset($element['#pretty__state'])) {
++          $pretty_state_attribute = $element['#pretty__state'];
++        }
++      }
++      else {
++        // @todo How should elements that support both radios and checkboxes be
++        // handled here?
++        $type = $this->getPrettyElementTypes()[0];
++        if ($pretty_default = $this->configFactory->get('webform.settings')->get("element.default_pretty_{$type}")) {
++          $pretty_attribute = $pretty_default;
++          if ($pretty_state_default = $this->configFactory->get('webform.settings')->get("element.default_pretty_state")) {
++            $pretty_state_attribute = $pretty_state_default;
++          }
++        }
++      }
++
++      if (!empty($pretty_attribute)) {
++        $element['#attached']['library'][] = 'webform/libraries.pretty-checkbox';
++      }
++    }
++
+     // Add .webform-has-field-prefix and .webform-has-field-suffix class.
+     if (!empty($element['#field_prefix'])) {
+       $element[$attributes_property]['class'][] = 'webform-has-field-prefix';
+@@ -2241,6 +2270,32 @@ class WebformElementBase extends PluginBase implements WebformElementInterface {
+       $form['form']['icheck']['#options']['none'] = $this->t('None');
+     }
+ 
++    $pretty_element_types = $this->getPrettyElementTypes();
++    if (!empty($pretty_element_types)) {
++      $pretty_options = [];
++      foreach ($pretty_element_types as $type) {
++        $pretty_options += $this->configFactory->get('webform.settings')->get("element.pretty_{$type}");
++      }
++      $pretty_states_options = $this->configFactory->get('webform.settings')->get("element.pretty_states");
++      $form['form']['pretty'] = [
++        '#type' => 'webform_select_other',
++        '#title' => $this->t('Pretty checkbox'),
++        '#empty_option' => $this->t('- None -'),
++        '#options' => $pretty_options,
++      ];
++      $form['form']['pretty__state'] = [
++        '#type' => 'webform_select_other',
++        '#title' => $this->t('Pretty checkbox state'),
++        '#empty_option' => $this->t('- None -'),
++        '#options' => $pretty_states_options,
++        '#states' => [
++          'visible' => [
++            ':input[name="properties[pretty][select]"]' => ['!value' => ''],
++          ],
++        ]
++      ];
++    }
++
+     /* Validation */
+ 
+     // Placeholder webform elements with #options.
+@@ -2801,6 +2856,34 @@ class WebformElementBase extends PluginBase implements WebformElementInterface {
+   }
+ 
+   /**
++   * Determines the pretty-checkbox element types of a webform element.
++   *
++   * @return array
++   *   The pretty-checkbox element types this element supports.
++   */
++  protected function getPrettyElementTypes() {
++    switch ($this->getTypeName()) {
++      case 'checkbox':
++      case 'checkboxes':
++        return ['checkbox'];
++
++      case 'radio':
++      case 'radios':
++      case 'webform_likert':
++        return ['radio'];
++
++      case 'tableselect':
++      case 'webform_tableselect_sort':
++        return ['checkbox', 'radio'];
++
++      // @todo Add support for webform_toggle?
++
++      default:
++        return [];
++    }
++  }
++
++  /**
+    * Build configuration form tabs.
+    *
+    * @param array $form
+diff --git a/src/WebformLibrariesManager.php b/src/WebformLibrariesManager.php
+index 7985bfec..e6135bcb 100644
+--- a/src/WebformLibrariesManager.php
++++ b/src/WebformLibrariesManager.php
+@@ -419,6 +419,15 @@ class WebformLibrariesManager implements WebformLibrariesManagerInterface {
+       'version' => '2.5.1',
+       'optional' => TRUE,
+     ];
++    $libraries['pretty-checkbox'] = [
++      'title' => $this->t('Pretty Checkbox'),
++      'description' => $this->t("A pure CSS library to beautify checkbox and radio buttons."),
++      'notes' => $this->t('Pretty Checkbox is used to optionally enhance checkboxes and radio buttons.'),
++      'homepage_url' => Url::fromUri('https://lokesh-coder.github.io/pretty-checkbox/'),
++      'download_url' => Url::fromUri('https://github.com/lokesh-coder/pretty-checkbox/archive/v3.0.3.zip'),
++      'version' => '3.0.3',
++      'optional' => TRUE,
++    ];
+     $libraries['progress-tracker'] = [
+       'title' => $this->t('Progress Tracker'),
+       'description' => $this->t("A flexible SASS component to illustrate the steps in a multi step process e.g. a multi step form, a timeline or a quiz."),
+diff --git a/tests/modules/webform_test/config/install/webform.webform.test_element_pretty_checkboxes.yml b/tests/modules/webform_test/config/install/webform.webform.test_element_pretty_checkboxes.yml
+new file mode 100644
+index 00000000..3d6e8bf4
+--- /dev/null
++++ b/tests/modules/webform_test/config/install/webform.webform.test_element_pretty_checkboxes.yml
+@@ -0,0 +1,168 @@
++langcode: en
++status: open
++dependencies:
++  enforced:
++    module:
++      - webform_test
++open: null
++close: null
++uid: null
++template: false
++id: test_element_pretty_checkboxes
++title: 'Test: Element: Pretty checkboxes'
++description: 'Test Pretty checkboxes element.'
++category: 'Test: Element'
++elements: |
++  checkbox_square_fill:
++    '#type': checkbox
++    '#title': checkbox_square_fill
++    '#pretty': 'p-square p-fill'
++  checkbox_square_thick:
++    '#type': checkbox
++    '#title': checkbox_square_thick
++    '#pretty': 'p-square p-thick'
++  checkbox_curve_fill:
++    '#type': checkbox
++    '#title': checkbox_curve_fill
++    '#pretty': 'p-curve p-fill'
++  checkbox_curve_thick:
++    '#type': checkbox
++    '#title': checkbox_curve_thick
++    '#pretty': 'p-curve p-thick'
++  checkbox_round_fill:
++    '#type': checkbox
++    '#title': checkbox_round_fill
++    '#pretty': 'p-round p-fill'
++  checkbox_round_thick:
++    '#type': checkbox
++    '#title': checkbox_round_thick
++    '#pretty': 'p-round p-thick'
++  checkbox_custom:
++    '#type': checkbox
++    '#title': checkbox_custom
++    '#title': checkbox_custom
++    '#pretty': 'p-thick p-pulse p-bigger'
++    '#pretty__state': 'p-primary'
++  radios_square_fill:
++    '#type': radios
++    '#title': radios_square_fill
++    '#pretty': 'p-square p-fill'
++    '#options':
++      one: One
++      two: Two
++      three: Three
++css: ''
++javascript: ''
++settings:
++  ajax: false
++  ajax_scroll_top: form
++  page: true
++  page_submit_path: ''
++  page_confirm_path: ''
++  form_submit_once: false
++  form_exception_message: ''
++  form_open_message: ''
++  form_close_message: ''
++  form_previous_submissions: true
++  form_confidential: false
++  form_confidential_message: ''
++  form_convert_anonymous: false
++  form_prepopulate: false
++  form_prepopulate_source_entity: false
++  form_prepopulate_source_entity_required: false
++  form_prepopulate_source_entity_type: ''
++  form_reset: false
++  form_disable_autocomplete: false
++  form_novalidate: false
++  form_unsaved: false
++  form_disable_back: false
++  form_submit_back: false
++  form_autofocus: false
++  form_details_toggle: false
++  form_login: false
++  form_login_message: ''
++  submission_label: ''
++  submission_log: false
++  submission_user_columns: {  }
++  submission_login: false
++  submission_login_message: ''
++  submission_exception_message: ''
++  submission_locked_message: ''
++  wizard_progress_bar: true
++  wizard_progress_pages: false
++  wizard_progress_percentage: false
++  wizard_start_label: ''
++  wizard_confirmation: true
++  wizard_confirmation_label: ''
++  wizard_track: ''
++  preview: 0
++  preview_label: ''
++  preview_title: ''
++  preview_message: ''
++  preview_attributes: {  }
++  preview_excluded_elements: {  }
++  preview_exclude_empty: true
++  draft: none
++  draft_multiple: false
++  draft_auto_save: false
++  draft_saved_message: ''
++  draft_loaded_message: ''
++  confirmation_type: message
++  confirmation_title: ''
++  confirmation_message: ''
++  confirmation_url: ''
++  confirmation_attributes: {  }
++  confirmation_back: true
++  confirmation_back_label: ''
++  confirmation_back_attributes: {  }
++  limit_total: null
++  limit_total_interval: null
++  limit_total_message: ''
++  limit_user: null
++  limit_user_interval: null
++  limit_user_message: ''
++  entity_limit_total: null
++  entity_limit_total_interval: null
++  entity_limit_user: null
++  entity_limit_user_interval: null
++  purge: none
++  purge_days: null
++  results_disabled: false
++  results_disabled_ignore: false
++  token_update: false
++access:
++  create:
++    roles:
++      - anonymous
++      - authenticated
++    users: {  }
++    permissions: {  }
++  view_any:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  update_any:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  delete_any:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  purge_any:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  view_own:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  update_own:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++  delete_own:
++    roles: {  }
++    users: {  }
++    permissions: {  }
++handlers: {  }
+diff --git a/webform.info.yml b/webform.info.yml
+index aff44bef..39dc0d6f 100644
+--- a/webform.info.yml
++++ b/webform.info.yml
+@@ -8,4 +8,3 @@ dependencies:
+   - 'drupal:field'
+   - 'drupal:system (>= 8.3)'
+   - 'drupal:user'
+-  - 'contribute:contribute'
+diff --git a/webform.libraries.yml b/webform.libraries.yml
+index b7f53163..bffa42d0 100644
+--- a/webform.libraries.yml
++++ b/webform.libraries.yml
+@@ -1119,6 +1119,19 @@ libraries.jquery.toggles:
+   dependencies:
+     - core/jquery
+ 
++libraries.pretty-checkbox:
++  remote: https://github.com/lokesh-coder/pretty-checkbox/
++  version: '3.0.3'
++  license:
++    name: MIT
++    url: http://opensource.org/licenses/mit-license.php
++    gpl-compatible: true
++  cdn:
++    /libraries/pretty-checkbox/: https://cdn.rawgit.com/lokesh-coder/pretty-checkbox/
++  css:
++    component:
++      /libraries/pretty-checkbox/dist/pretty-checkbox.min.css: {}
++
+ libraries.progress-tracker:
+   remote: https://github.com/NigelOToole/progress-tracker
+   version: '1.4.0'
