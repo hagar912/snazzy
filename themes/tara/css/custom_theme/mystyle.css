@@ -1,0 +1,120 @@
+.header-top{
+	display: none;
+}
+.header{
+	position: fixed !important;
+}
+.site-branding img {
+    width: 130px !important;
+}
+.views-field-field-image{
+	padding: 8px;
+}
+input.form-number,#edit-field-product-price-0-value {
+  background-color: #ddd !important;
+}
+#edit-advanced {
+	display: none;
+}
+.container{
+	max-width: -webkit-fill-available !important;
+  padding: .2% 0% !important;
+}
+#block-aboutflorist{
+	padding: 0% 6%;
+}
+#block-allproductsslider{
+	padding: 0px !important;
+}
+.header-container{
+	padding: 0px 3% !important;
+}
+.views-exposed-form{
+	padding: 1% 6%;
+}
+.cols-6{
+	margin: 1% auto;
+  width: 95%;
+}
+input[type="text"],select{
+  border-radius: 5px;
+  border-color: #ccc7c2;
+  color: #dc5431;
+  width: 100%;
+  padding: 8px !important;
+}
+input[type="submit"]{
+	padding: 12px 100px !important;
+  border-radius: 10px !important;
+  background-color: #dc5431;
+}
+#views-exposed-form-products-page-1 {
+	background-color: blanchedalmond;
+  margin: 2px 35px;
+  padding: 2% 10px 4%;
+}
+#views-exposed-form-products-page-1 .form-item{
+	float: left;
+	width: 15%;
+	margin-right: 5%;
+}
+#edit-actions{
+	clear: both;
+	margin-top: 9%;
+}
+.main-wrapper {
+  padding: 3px 0 50px 0 !important;
+}
+body{
+	background-color: floralwhite !important;
+	--body-bg: floralwhite !important;
+  --text-color: floralwhite !important;
+  --bold-color: floralwhite !important;
+  --header-top-bg: floralwhite !important;
+  --primary: #e3831c;
+  --light: floralwhite !important;
+  --border: floralwhite !important;
+  --shadow: 0 0 6px 1px #cccccc;
+}
+.main-wrapper{
+	background-color: floralwhite !important;
+}
+.product-view-col-block{
+  text-align: center;
+  font-size: large;
+}
+.views-field-field-product-image img{
+	width: 280px;
+  height: 340px !important;
+}
+#views-exposed-form-products-block-1 .form-item{
+	padding-right: 29px;
+}
+#edit-field-client-target-id{
+	display: flex;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

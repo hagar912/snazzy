@@ -1,0 +1,55 @@
+From 82255039ace5016727c3c6228a5353bb2b7876c2 Mon Sep 17 00:00:00 2001
+From: o771e <o.bardiuk@dev-branch.com>
+Date: Tue, 17 Aug 2021 16:54:36 +0300
+Subject: [PATCH] 3228520 fix static method and array parameter
+
+---
+ src/Form/ScannerConfirmForm.php | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/Form/ScannerConfirmForm.php b/src/Form/ScannerConfirmForm.php
+index 33b27b6..ebcdd62 100644
+--- a/src/Form/ScannerConfirmForm.php
++++ b/src/Form/ScannerConfirmForm.php
+@@ -2,6 +2,7 @@
+ 
+ namespace Drupal\scanner\Form;
+ 
++use Drupal\Component\Plugin\Exception\PluginException;
+ use Drupal\Core\Form\ConfirmFormBase;
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\Url;
+@@ -121,10 +122,10 @@ class ScannerConfirmForm extends ConfirmFormBase {
+       // The instance could not be found so fail gracefully and let the user
+       // know.
+       \Drupal::logger('scanner')->error($e->getMessage());
+-      \Drupal::messenger()->addError($this->t('An error occured @e:', ['@e' => $e->getMessage()]));
++      \Drupal::messenger()->addError(t('An error occured @e:', ['@e' => $e->getMessage()]));
+     }
+ 
+-    $results_data = '';
++    $results_data = [];
+     if (isset($context['results']['data'])) {
+       $results_data = $context['results']['data'];
+     }
+@@ -167,7 +168,7 @@ class ScannerConfirmForm extends ConfirmFormBase {
+           }
+         }
+         $results['count'] = $count;
+-        $messenger->addMessage($this->t('@count entities processed.', [
++        $messenger->addMessage(t('@count entities processed.', [
+           '@count' => $count,
+         ]));
+         $connection = \Drupal::service('database');
+@@ -186,7 +187,7 @@ class ScannerConfirmForm extends ConfirmFormBase {
+       }
+     }
+     else {
+-      $message = $this->t('There were some errors.');
++      $message = t('There were some errors.');
+       $messenger->addMessage($message);
+     }
+   }
+-- 
+GitLab
+

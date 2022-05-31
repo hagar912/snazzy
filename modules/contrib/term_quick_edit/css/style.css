@@ -1,0 +1,16 @@
+a.term-quick-edit,
+a.term-quick-delete {
+  text-indent: -9999px;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+}
+a.term-quick-edit {
+  background: transparent url(../image/edit-48.png) no-repeat top left;
+  background-size: contain;
+}
+a.term-quick-delete {
+  background: transparent url(../image/delete-bin-48.png) no-repeat top left;
+  background-size: contain;
+}

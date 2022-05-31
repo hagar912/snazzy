@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * @file
+ * This module allows convert default checkbox and radiobutton.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function pcr_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.pcr':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The Pretty Checkbox Radio module allows the default
+        checkbox and radiobutton to be converted to buttons-friendly
+        elements.') . '</p>';
+      $output .= '<h3>' . t('Uses') . '</h3>';
+      $output .= '<p>' . t('Go to manage form display tab and under widget
+        column select "Pretty Check boxes/radio buttons" for Boolean or
+        List(text) fields') . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function pcr_theme($existing, $type, $theme, $path) {
+  return [
+    'elements__pretty_options' => [
+      'render element' => 'element',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_element_info_alter().
+ */
+function pcr_element_info_alter(array &$types) {
+  // The elements to be processed to turn them into a pretty element.
+  $candidate_elements = ['checkboxes', 'radios', 'checkbox', 'radio'];
+
+  // Add a process function to each candidate element to modify it.
+  foreach ($candidate_elements as $element) {
+    if (isset($types[$element])) {
+      $types[$element]['#process'][] = ['Drupal\pcr\PrettyElement', 'process'];
+    }
+  }
+}

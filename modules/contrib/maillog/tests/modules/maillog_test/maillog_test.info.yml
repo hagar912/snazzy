@@ -1,0 +1,6 @@
+name: 'Maillog test'
+description: 'Contains helper logic for the Maillog tests.'
+package: 'Mail'
+core_version_requirement: ^8 || ^9
+type: module
+hidden: TRUE

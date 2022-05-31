@@ -1,0 +1,56 @@
+<?php
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
+use Drupal\taxonomy\TermForm;
+use Drupal\term_quick_edit\TermQuickDeleteForm;
+use Drupal\term_quick_edit\TermQuickEditForm;
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function term_quick_edit_form_taxonomy_overview_terms_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $config = \Drupal::service('config.factory')->get('term_quick_edit.settings');
+
+  foreach ($form['terms'] as &$term) {
+    if (!is_array($term) || empty($term['term']) || empty($term['#term'])) {
+      continue;
+    }
+    /** @var \Drupal\taxonomy\TermInterface $entity */
+    $entity = $term['#term'];
+    if (FALSE == $config->get('taxonomy.' . $entity->bundle())) {
+      continue;
+    }
+    $term['term']['#attributes']['class'] = ['ajax-quick-edit-title-' . $entity->id()];
+    $term['term']['quick_edit'] = [
+      '#type' => 'link',
+      '#title' => t('Quick edit'),
+      '#attributes' => [
+        'class' => ['use-ajax', 'term-quick-edit'],
+        'data-dialog-type' => 'modal',
+        'data-dialog-options' => '{"width":800}',
+      ],
+      '#url' => Url::fromRoute('term_quick_edit.term_edit_mode', ['taxonomy_term' => $entity->id()]),
+    ];
+    $term['term']['quick_delete'] = [
+      '#type' => 'link',
+      '#title' => t('Quick delete'),
+      '#attributes' => [
+        'class' => ['use-ajax', 'term-quick-delete'],
+        'data-dialog-type' => 'modal',
+        'data-dialog-options' => '{"width":800}',
+      ],
+      '#url' => Url::fromRoute('term_quick_edit.quick_delete_form', ['taxonomy_term' => $entity->id()]),
+    ];
+  }
+  $form['#attached']['library'][] = 'term_quick_edit/quick-edit';
+}
+
+/**
+ * Implements hook_entity_type_build().
+ */
+function term_quick_edit_entity_type_build(array &$entity_types) {
+  $entity_types['taxonomy_term']->setFormClass('quick_edit', TermQuickEditForm::class);
+  $entity_types['taxonomy_term']->setFormClass('quick_delete', TermQuickDeleteForm::class);
+}
+

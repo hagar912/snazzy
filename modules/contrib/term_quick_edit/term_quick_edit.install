@@ -1,0 +1,16 @@
+<?php
+
+use Drupal\Core\Entity\Entity\EntityFormMode;
+
+function term_quick_edit_install() {
+  $quick_edit = EntityFormMode::load('taxonomy_term.quick_edit');
+  if (empty($quick_edit)) {
+    EntityFormMode::create([
+      'id' => 'taxonomy_term.quick_edit',
+      'label' => 'Quick edit',
+      'targetEntityType' => 'taxonomy_term',
+      'status' => TRUE,
+      'enabled' => TRUE,
+    ])->save();
+  }
+}

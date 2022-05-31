@@ -1,0 +1,20 @@
+{
+  "name": "drupal/pcr",
+  "description": "Convert to buttons-friendly elements checkboxes and radiobuttons",
+  "type": "drupal-module",
+  "keywords": ["Drupal", "Fields"],
+  "homepage": "https://www.drupal.org/project/pcr",
+  "license": "GPL-2.0+",
+  "authors": [
+    {
+      "name": "Diosbel Mezquía (diosbelmezquia)",
+      "email": "dmezquiam@gmail.com",
+      "homepage": "https://www.drupal.org/u/diosbelmezquia",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/pcr",
+    "source": "http://cgit.drupalcode.org/pcr"
+  }
+}

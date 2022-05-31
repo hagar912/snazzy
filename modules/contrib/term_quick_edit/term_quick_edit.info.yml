@@ -1,0 +1,11 @@
+name: 'Term Quick Edit'
+type: module
+description: 'This module support to edit the term quickly.'
+core: 8.x
+core_version_requirement: ^8 || ^9
+configure: term_quick_edit.settings
+
+# Information added by Drupal.org packaging script on 2020-07-29
+version: '1.0.0'
+project: 'term_quick_edit'
+datestamp: 1596016564

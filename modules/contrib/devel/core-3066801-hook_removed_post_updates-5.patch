@@ -1,0 +1,480 @@
+From bed54e818b8c4b962b4a1ce6686c02914f04df8f Mon Sep 17 00:00:00 2001
+From: David Stinemetze <davidstinemetze@gmail.com>
+Date: Tue, 9 Jul 2019 23:35:53 -0500
+Subject: [PATCH] Issue #3066801 by WidgetsBurritos: Add
+ hook_removed_post_updates()
+
+---
+ .../Update/RemovedPostUpdateNameException.php | 44 ++++++++++++
+ .../lib/Drupal/Core/Update/UpdateRegistry.php | 26 ++++++-
+ .../src/Controller/DbUpdateController.php     | 15 +++-
+ ...update-test-removed-postupdate-enabled.php | 39 +++++++++++
+ .../update_test_postupdate.post_update.php    |  7 ++
+ .../update_test_removed_postupdate.info.yml   |  5 ++
+ .../update_test_removed_postupdate.install    | 12 ++++
+ ...te_test_removed_postupdate.post_update.php | 35 ++++++++++
+ .../Update/UpdatePostUpdateTest.php           |  2 +
+ .../Update/UpdateRemovedPostUpdateTest.php    | 68 +++++++++++++++++++
+ .../Tests/Core/Update/UpdateRegistryTest.php  | 60 ++++++++++++++++
+ 11 files changed, 311 insertions(+), 2 deletions(-)
+ create mode 100644 core/lib/Drupal/Core/Update/RemovedPostUpdateNameException.php
+ create mode 100644 core/modules/system/tests/fixtures/update/drupal-8.update-test-removed-postupdate-enabled.php
+ create mode 100644 core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.info.yml
+ create mode 100644 core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.install
+ create mode 100644 core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.post_update.php
+ create mode 100644 core/modules/system/tests/src/Functional/Update/UpdateRemovedPostUpdateTest.php
+
+diff --git a/htdocs/snazzy/core/lib/Drupal/Core/Update/RemovedPostUpdateNameException.php b/core/lib/Drupal/Core/Update/RemovedPostUpdateNameException.php
+new file mode 100644
+index 0000000000..4e80e6eef7
+--- /dev/null
++++ b/htdocs/snazzy/core/lib/Drupal/Core/Update/RemovedPostUpdateNameException.php
+@@ -0,0 +1,44 @@
++<?php
++
++namespace Drupal\Core\Update;
++
++/**
++ * An exception thrown for removed post update errors.
++ *
++ * Occurs when a module defines hook_post_update_NAME() that when NAME also
++ * exists in the array returned by hook_removed_post_updates().
++ */
++class RemovedPostUpdateNameException extends \Exception {
++
++  /**
++   * List of invalid hook_post_update_NAME functions.
++   *
++   * @var string[]
++   */
++  protected $invalidUpdates;
++
++  /**
++   * Overrides parent constructor.
++   *
++   * @param string[] $invalid_updates
++   *   List of invalid post update hooks.
++   *
++   * @param string $message
++   *   Optional exception message.
++   */
++  public function __construct(array $invalid_updates, string $message = '') {
++    parent::__construct($message);
++    $this->invalidUpdates = $invalid_updates;
++  }
++
++  /**
++   * Retrieves a list of invalid hook_post_update_NAME functions.
++   *
++   * @return string[]
++   *   List of invalid hook_post_update_NAME functions.
++   */
++  public function getInvalidUpdates() {
++    return $this->invalidUpdates;
++  }
++
++}
+diff --git a/core/lib/Drupal/Core/Update/UpdateRegistry.php b/core/lib/Drupal/Core/Update/UpdateRegistry.php
+index 76ac81cb8a..045f02e7a5 100644
+--- a/core/lib/Drupal/Core/Update/UpdateRegistry.php
++++ b/core/lib/Drupal/Core/Update/UpdateRegistry.php
+@@ -86,6 +86,20 @@ public function __construct($root, $site_path, array $enabled_modules, KeyValueS
+     $this->includeTests = $include_tests;
+   }
+ 
++  /**
++   * Gets all names removed from a module's post_update scope.
++   *
++   * @return string[]
++   *   A list of names not allowed in module's post_update hooks.
++   */
++  protected function getRemovedPostUpdateFunctionsForModule($module) {
++    $function = "{$module}_removed_post_updates";
++    if (function_exists($function)) {
++      return $function();
++    }
++    return [];
++  }
++
+   /**
+    * Gets all available update functions.
+    *
+@@ -97,15 +111,25 @@ protected function getAvailableUpdateFunctions() {
+     $functions = get_defined_functions();
+ 
+     $updates = [];
++    $invalid_updates = [];
+     foreach (preg_grep('/_' . $this->updateType . '_/', $functions['user']) as $function) {
+       // If this function is a module update function, add it to the list of
+       // module updates.
+       if (preg_match($regexp, $function, $matches)) {
+         if (in_array($matches['module'], $this->enabledModules)) {
+-          $updates[] = $matches['module'] . '_' . $this->updateType . '_' . $matches['name'];
++          $removed = $this->updateType == 'post_update' ? $this->getRemovedPostUpdateFunctionsForModule($matches['module']) : [];
++          if (!in_array($matches['name'], $removed)) {
++            $updates[] = $matches['module'] . '_' . $this->updateType . '_' . $matches['name'];
++          }
++          else {
++            $invalid_updates[] = $matches['module'] . '_' . $this->updateType . '_' . $matches['name'];
++          }
+         }
+       }
+     }
++    if (!empty($invalid_updates)) {
++      throw new RemovedPostUpdateNameException($invalid_updates);
++    }
+ 
+     // Ensure that the update order is deterministic.
+     sort($updates);
+diff --git a/core/modules/system/src/Controller/DbUpdateController.php b/core/modules/system/src/Controller/DbUpdateController.php
+index 25a2a70891..e5fef70e37 100644
+--- a/core/modules/system/src/Controller/DbUpdateController.php
++++ b/core/modules/system/src/Controller/DbUpdateController.php
+@@ -10,6 +10,7 @@
+ use Drupal\Core\Session\AccountInterface;
+ use Drupal\Core\Site\Settings;
+ use Drupal\Core\State\StateInterface;
++use Drupal\Core\Update\RemovedPostUpdateNameException;
+ use Drupal\Core\Update\UpdateRegistry;
+ use Drupal\Core\Url;
+ use Symfony\Component\DependencyInjection\ContainerInterface;
+@@ -273,7 +274,19 @@ protected function selection(Request $request) {
+           $updates = update_get_update_list();
+           break;
+         case 'post_update':
+-          $updates = $this->postUpdateRegistry->getPendingUpdateInformation();
++          try {
++            $updates = $this->postUpdateRegistry->getPendingUpdateInformation();
++          }
++          catch (RemovedPostUpdateNameException $e) {
++            $invalid_updates = $e->getInvalidUpdates();
++            return [
++              '#type' => 'item',
++              '#title' => $this->formatPlural(count($invalid_updates), 'Restricted hook_post_update_NAME usage', 'Restricted hook_post_update_NAME usage'),
++              '#markup' => '<ul><li>' . implode('()</li><li>', $invalid_updates) . '()</li></ul>',
++              '#prefix' => '<div class="messages messages--warning">',
++              '#suffix' => '</div>',
++            ];
++          }
+           break;
+       }
+       foreach ($updates as $module => $update) {
+diff --git a/core/modules/system/tests/fixtures/update/drupal-8.update-test-removed-postupdate-enabled.php b/core/modules/system/tests/fixtures/update/drupal-8.update-test-removed-postupdate-enabled.php
+new file mode 100644
+index 0000000000..13b22da096
+--- /dev/null
++++ b/core/modules/system/tests/fixtures/update/drupal-8.update-test-removed-postupdate-enabled.php
+@@ -0,0 +1,39 @@
++<?php
++
++/**
++ * @file
++ * Partial database to mimic the installation of the update_test_post_update
++ * module.
++ */
++
++use Drupal\Core\Database\Database;
++
++$connection = Database::getConnection();
++
++// Set the schema version.
++$connection->merge('key_value')
++  ->condition('collection', 'system.schema')
++  ->condition('name', 'update_test_removed_postupdate')
++  ->fields([
++    'collection' => 'system.schema',
++    'name' => 'update_test_removed_postupdate',
++    'value' => 'i:8000;',
++  ])
++  ->execute();
++
++// Update core.extension.
++$extensions = $connection->select('config')
++  ->fields('config', ['data'])
++  ->condition('collection', '')
++  ->condition('name', 'core.extension')
++  ->execute()
++  ->fetchField();
++$extensions = unserialize($extensions);
++$extensions['module']['update_test_removed_postupdate'] = 8000;
++$connection->update('config')
++  ->fields([
++    'data' => serialize($extensions),
++  ])
++  ->condition('collection', '')
++  ->condition('name', 'core.extension')
++  ->execute();
+diff --git a/core/modules/system/tests/modules/update_test_postupdate/update_test_postupdate.post_update.php b/core/modules/system/tests/modules/update_test_postupdate/update_test_postupdate.post_update.php
+index 54e1ddf618..8785ec6b79 100644
+--- a/core/modules/system/tests/modules/update_test_postupdate/update_test_postupdate.post_update.php
++++ b/core/modules/system/tests/modules/update_test_postupdate/update_test_postupdate.post_update.php
+@@ -67,3 +67,10 @@ function update_test_postupdate_post_update_test_batch(&$sandbox = NULL) {
+   $sandbox['#finished'] = $sandbox['current_step'] / $sandbox['steps'];
+   return 'Test post update batches';
+ }
++
++/**
++ * Implements hook_removed_post_updates().
++ */
++function update_test_postupdate_removed_post_updates() {
++  return ['foo', 'bar', 'baz'];
++}
+diff --git a/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.info.yml b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.info.yml
+new file mode 100644
+index 0000000000..570a58e802
+--- /dev/null
++++ b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.info.yml
+@@ -0,0 +1,5 @@
++core: 8.x
++name: Update test removed post updates
++type: module
++package: Testing
++version: VERSION
+diff --git a/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.install b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.install
+new file mode 100644
+index 0000000000..553475c30e
+--- /dev/null
++++ b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.install
+@@ -0,0 +1,12 @@
++<?php
++
++/**
++ * @file
++ * Install hooks for test module.
++ */
++
++/**
++ * Normal update_N() function.
++ */
++function update_test_removed_postupdate_update_8001() {
++}
+diff --git a/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.post_update.php b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.post_update.php
+new file mode 100644
+index 0000000000..e1bc8801c7
+--- /dev/null
++++ b/core/modules/system/tests/modules/update_test_removed_postupdate/update_test_removed_postupdate.post_update.php
+@@ -0,0 +1,35 @@
++<?php
++
++/**
++ * @file
++ * Post update functions for test module.
++ */
++
++/**
++ * First update.
++ */
++function update_test_removed_postupdate_post_update_first() {
++  $execution = \Drupal::state()->get('post_update_test_execution', []);
++  $execution[] = __FUNCTION__;
++  \Drupal::state()->set('post_update_test_execution', $execution);
++
++  return 'First update';
++}
++
++/**
++ * Second update.
++ */
++function update_test_removed_postupdate_post_update_second() {
++  $execution = \Drupal::state()->get('post_update_test_execution', []);
++  $execution[] = __FUNCTION__;
++  \Drupal::state()->set('post_update_test_execution', $execution);
++
++  return 'Second update';
++}
++
++/**
++ * Implements hook_removed_post_updates().
++ */
++function update_test_removed_postupdate_removed_post_updates() {
++  return ['second'];
++}
+diff --git a/core/modules/system/tests/src/Functional/Update/UpdatePostUpdateTest.php b/core/modules/system/tests/src/Functional/Update/UpdatePostUpdateTest.php
+index 3e2c46a99c..4a81409c87 100644
+--- a/core/modules/system/tests/src/Functional/Update/UpdatePostUpdateTest.php
++++ b/core/modules/system/tests/src/Functional/Update/UpdatePostUpdateTest.php
+@@ -81,6 +81,8 @@ public function testPostUpdate() {
+     $this->updateRequirementsProblem();
+     $this->drupalGet('update.php/selection');
+     $this->assertText('No pending updates.');
++
++
+   }
+ 
+ }
+diff --git a/core/modules/system/tests/src/Functional/Update/UpdateRemovedPostUpdateTest.php b/core/modules/system/tests/src/Functional/Update/UpdateRemovedPostUpdateTest.php
+new file mode 100644
+index 0000000000..6f4b389319
+--- /dev/null
++++ b/core/modules/system/tests/src/Functional/Update/UpdateRemovedPostUpdateTest.php
+@@ -0,0 +1,68 @@
++<?php
++
++namespace Drupal\Tests\system\Functional\Update;
++
++use Drupal\Component\Render\FormattableMarkup;
++use Drupal\Core\StringTranslation\StringTranslationTrait;
++use Drupal\FunctionalTests\Update\UpdatePathTestBase;
++
++/**
++ * Tests hook_post_update().
++ *
++ * @group Update
++ * @group legacy
++ */
++class UpdateRemovedPostUpdateTest extends UpdatePathTestBase {
++
++  use StringTranslationTrait;
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function setDatabaseDumpFiles() {
++    $this->databaseDumpFiles = [
++      __DIR__ . '/../../../../tests/fixtures/update/drupal-8.bare.standard.php.gz',
++      __DIR__ . '/../../../../tests/fixtures/update/drupal-8.update-test-removed-postupdate-enabled.php',
++    ];
++  }
++
++  /**
++   * {@inheritdoc}
++   */
++  protected function doSelectionTest() {
++    parent::doSelectionTest();
++
++    // Ensure that normal and post_update updates are merged together on the
++    // selection page.
++    $this->assertRaw($this->t('<label>Restricted hook_post_update_NAME usage</label>'));
++    $this->assertRaw($this->t('<ul><li>update_test_removed_postupdate_post_update_second()</li></ul>'));
++    $this->assertNoRaw($this->t('Apply pending updates'));
++  }
++
++  /**
++   * Tests hook_post_update_NAME().
++   */
++  public function testPostUpdate() {
++    if (!$this->zlibInstalled) {
++      $this->fail('Missing zlib requirement for update tests.');
++      return FALSE;
++    }
++    // The site might be broken at the time so logging in using the UI might
++    // not work, so we use the API itself.
++    drupal_rewrite_settings([
++      'settings' => [
++        'update_free_access' => (object) [
++          'value' => TRUE,
++          'required' => TRUE,
++        ],
++      ],
++    ]);
++
++    $this->drupalGet($this->updateUrl);
++    $this->updateRequirementsProblem();
++    $this->clickLink($this->t('Continue'));
++
++    $this->doSelectionTest();
++  }
++
++}
+diff --git a/core/tests/Drupal/Tests/Core/Update/UpdateRegistryTest.php b/core/tests/Drupal/Tests/Core/Update/UpdateRegistryTest.php
+index 4ebecb6097..a394e25a2c 100644
+--- a/core/tests/Drupal/Tests/Core/Update/UpdateRegistryTest.php
++++ b/core/tests/Drupal/Tests/Core/Update/UpdateRegistryTest.php
+@@ -4,6 +4,7 @@
+ 
+ use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
+ use Drupal\Core\Site\Settings;
++use Drupal\Core\Update\RemovedPostUpdateNameException;
+ use Drupal\Core\Update\UpdateRegistry;
+ use Drupal\Tests\UnitTestCase;
+ use org\bovigo\vfs\vfsStream;
+@@ -44,6 +45,12 @@ protected function setupBasicModules() {
+ type: module
+ name: Module B
+ core: 8.x
++EOS;
++
++    $info_c = <<<'EOS'
++type: module
++name: Module C
++core: 8.x
+ EOS;
+ 
+     $module_a = <<<'EOS'
+@@ -71,6 +78,37 @@ function module_a_post_update_a() {
+ function module_b_post_update_a() {
+ }
+ 
++/**
++ * Implements hook_removed_post_updates().
++ */
++function module_b_removed_post_updates() {
++  return ['b', 'c'];
++}
++
++EOS;
++
++    $module_c = <<<'EOS'
++<?php
++
++/**
++ * Module C update A.
++ */
++function module_c_post_update_a() {
++}
++
++/**
++ * Module C update B.
++ */
++function module_c_post_update_b() {
++}
++
++/**
++ * Implements hook_removed_post_updates().
++ */
++function module_c_removed_post_updates() {
++  return ['b', 'c'];
++}
++
+ EOS;
+     vfsStream::setup('drupal');
+     vfsStream::create([
+@@ -85,6 +123,10 @@ function module_b_post_update_a() {
+               'module_b.post_update.php' => $module_b,
+               'module_b.info.yml' => $info_b,
+             ],
++            'module_c' => [
++              'module_c.post_update.php' => $module_c,
++              'module_c.info.yml' => $info_c,
++            ],
+           ],
+         ],
+       ],
+@@ -209,6 +251,24 @@ public function testGetPendingUpdateInformationWithExistingUpdates() {
+     $this->assertEquals($expected, $update_registry->getPendingUpdateInformation());
+   }
+ 
++  /**
++   * @covers ::getPendingUpdateInformation
++   */
++  public function testGetPendingUpdateInformationWithRemovedUpdates() {
++    $this->setupBasicModules();
++
++    $key_value = $this->prophesize(KeyValueStoreInterface::class);
++    $key_value->get('existing_updates', [])->willReturn(['module_a_post_update_a']);
++    $key_value = $key_value->reveal();
++
++    $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
++      'module_c',
++    ], $key_value, FALSE);
++
++    $this->expectException(RemovedPostUpdateNameException::class);
++    $update_registry->getPendingUpdateInformation();
++  }
++
+   /**
+    * @covers ::getModuleUpdateFunctions
+    */
+-- 
+2.22.0
+

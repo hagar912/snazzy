@@ -1,0 +1,31 @@
+term_quick_edit.term_edit_mode:
+  path: '/taxonomy/term-edit-mode/{taxonomy_term}/edit'
+  defaults:
+    _controller: '\Drupal\term_quick_edit\Controller\TermEditModeController::editForm'
+    _title: 'Edit taxonomy term'
+  requirements:
+    _custom_access: '\Drupal\term_quick_edit\Controller\TermEditModeController::access'
+  options:
+    _admin_route: TRUE
+    parameters:
+      taxonomy_term:
+        type: entity:taxonomy_term
+
+term_quick_edit.quick_delete_form:
+  path: '/taxonomy/term-edit-mode/{taxonomy_term}/delete'
+  defaults:
+    _controller: '\Drupal\term_quick_edit\Controller\TermQuickDeleteController::deleteForm'
+    _title: 'Delete term'
+  options:
+    _admin_route: TRUE
+  requirements:
+    _entity_access: 'taxonomy_term.delete'
+    taxonomy_term: \d+
+
+term_quick_edit.settings:
+  path: '/admin/config/content/term-quick-edit'
+  defaults:
+    _form: '\Drupal\term_quick_edit\Form\TermQuickEditSettings'
+    _title: 'Term Quick Edit Settings'
+  requirements:
+    _permission: 'administer term quick edit'

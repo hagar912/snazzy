@@ -1,0 +1,4 @@
+'administer term quick edit':
+  title: 'Administer Term Quick Edit'
+  description: 'Perform administration tasks for the Term Quick Edit module.'
+  restrict access: TRUE

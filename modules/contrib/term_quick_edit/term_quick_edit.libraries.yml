@@ -1,0 +1,18 @@
+quick-edit:
+  version: VERSION
+  css:
+    theme:
+      css/style.css: {}
+  js:
+    js/quick-edit.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupal.dialog.ajax
+    - core/jquery.form
+
+page-reload:
+  js:
+    js/page-reload.js: {}
+  dependencies:
+    - core/drupal.ajax

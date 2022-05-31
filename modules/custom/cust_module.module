@@ -1,0 +1,23 @@
+<?php
+
+function cust_module_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  switch ($form_id) {
+    // This is our form ID.
+    case 'node_add_product_form':
+      handle_add_product_form_alter($form);
+      break;
+  }
+
+}
+
+/*
+ * alter form add product*/
+function handle_add_product_form_alter(&$form){  
+  $form['field_product_price']['widget'][0]['value']['#attributes']['placeholder'] = 'price isnot available to write';
+ // $form['field_product_price']['widget'][0]['value']['#attributes']['readonly'] = 'readonly';
+  $form['actions']['submit']['#value']='Save My Produnct';
+    $form['source_code'] = array(
+        '#title' => t('Description'),
+        '#type' => 'textarea',
+      );
+}
