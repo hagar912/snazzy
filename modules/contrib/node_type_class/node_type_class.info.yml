@@ -1,0 +1,9 @@
+type: module
+name : Node type class
+description : Adds classes specific to content types
+core_version_requirement: ^8.8 || ^9
+
+# Information added by Drupal.org packaging script on 2021-10-25
+version: '2.0.1'
+project: 'node_type_class'
+datestamp: 1635167392

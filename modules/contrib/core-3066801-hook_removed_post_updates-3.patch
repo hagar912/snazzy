@@ -1,0 +1,40 @@
+diff --git a/core/lib/Drupal/Core/Update/UpdateRegistry.php b/core/lib/Drupal/Core/Update/UpdateRegistry.php
+index 76ac81cb8a..f15002d648 100644
+--- a/core/lib/Drupal/Core/Update/UpdateRegistry.php
++++ b/core/lib/Drupal/Core/Update/UpdateRegistry.php
+@@ -86,6 +86,20 @@ public function __construct($root, $site_path, array $enabled_modules, KeyValueS
+     $this->includeTests = $include_tests;
+   }
+ 
++  /**
++   * Gets all names removed from a module's post_update scope.
++   *
++   * @return string[]
++   *   A list of names not allowed in module's post_update hooks.
++   */
++  protected function getRemovedPostUpdateFunctionsForModule($module) {
++    $function = "{$module}_removed_post_updates";
++    if (function_exists($function)) {
++      return $function();
++    }
++    return [];
++  }
++
+   /**
+    * Gets all available update functions.
+    *
+@@ -102,7 +116,13 @@ protected function getAvailableUpdateFunctions() {
+       // module updates.
+       if (preg_match($regexp, $function, $matches)) {
+         if (in_array($matches['module'], $this->enabledModules)) {
+-          $updates[] = $matches['module'] . '_' . $this->updateType . '_' . $matches['name'];
++          $removed = $this->getRemovedPostUpdateFunctionsForModule($matches['module']);
++          if (!in_array($matches['name'], $this->getRemovedPostUpdateFunctionsForModule($matches['module']))) {
++            $updates[] = $matches['module'] . '_' . $this->updateType . '_' . $matches['name'];
++          }
++          else {
++            throw new \Exception("You can't get ye flask.");
++          }
+         }
+       }
+     }
