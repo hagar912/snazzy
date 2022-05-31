@@ -35,6 +35,7 @@
   .layout-region-node-secondary {
     float: right; /* LTR */
     width: 35%;
+    display: none;
   }
 
   [dir="rtl"] .layout-region-node-secondary {
